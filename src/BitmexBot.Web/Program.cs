@@ -79,6 +79,7 @@ api.MapPost("/strategies", (StrategyDefinition def, StrategyStore s) => s.Upsert
 api.MapDelete("/strategies/{id}", (string id, StrategyStore s) => s.Delete(id) ? Results.NoContent() : Results.NotFound());
 
 api.MapPost("/orders", async (TradeRequest req, TradingEngine e) => await e.Orders.SubmitManual(req));
+api.MapPost("/orders/{id}/cancel", async (string id, IExchange ex) => { await ex.CancelAsync(id); return Results.NoContent(); });
 api.MapPost("/orders/cancel-all", async (IExchange ex) => { await ex.CancelAllAsync(); return Results.NoContent(); });
 api.MapPost("/position/close", async (IExchange ex) => { await ex.ClosePositionAsync(); return Results.NoContent(); });
 api.MapPost("/kill", async (TradingEngine e) => { await e.Orders.Kill(); return Results.NoContent(); });

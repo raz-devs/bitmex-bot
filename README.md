@@ -1,10 +1,57 @@
 # bitmex-bot
 
-XBTUSD trading tools for BitMEX, in C# (.NET 10).
+Crypto trading desk in C# (.NET 10) and React: live chart with indicators, a rule builder for entries and exits,
+limit/market orders with take profit and stop loss, risk limits, and a backtester that runs the same strategy code.
 
-This first part is the shared strategy core and a backtester. The live engine and web app (websocket feed, TradingView Lightweight Charts, rule editor, orders with TP/SL) will be built on the same core, so a strategy behaves the same in backtests and live.
+BitMEX stopped trading in September 2026, so the app talks to exchanges through an adapter interface (`IExchange`).
+It ships with a **paper exchange** (a simulator) so everything can be tried without an account. A real exchange is
+one new adapter class; nothing else changes.
 
-## Run a backtest
+## Run the app
+
+Requires the .NET 10 SDK and Node 20+.
+
+```bash
+cd web && npm install && npm run build && cd ..        # builds the UI into src/BitmexBot.Web/wwwroot
+dotnet run --project src/BitmexBot.Web                   # http://localhost:5000
+```
+
+For UI development, run the server and then `npm run dev` in `web/` (Vite proxies `/api` and `/hub` to :5000).
+
+### Settings (`src/BitmexBot.Web/appsettings.json`, or environment variables like `Exchange__ApiKey`)
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `Exchange:Name` | `paper` | Which adapter runs. Only `paper` exists today |
+| `Exchange:Testnet` | `true` | Real adapters must default to testnet; mainnet only when set to `false` |
+| `Exchange:ApiKey` / `ApiSecret` | empty | Stay on the server. Without them, real adapters run market data only |
+| `Exchange:MakerFee` / `TakerFee` | `0.0002` / `0.00075` | Used by the paper exchange and backtests |
+| `Risk:MaxContracts` | `1000` | Largest order and largest absolute position |
+| `Risk:MaxOrdersPerMinute` | `20` | Entry orders per minute, manual and automatic |
+| `Risk:DailyLossLimitPct` | `5` | Auto trading switches off after this drawdown from the day's starting equity |
+| `App:AccessToken` | empty | If set, the UI asks for it and every API/hub call must send it. Otherwise keep the server on localhost |
+| `App:DataDir` | `data` | Strategies (`strategies.json`) and backtest CSVs |
+
+Use `dotnet user-secrets` or environment variables for keys rather than committing them.
+
+### How it stays fast
+
+- The exchange adapter's receive loop only hands events to a queue; one worker does all processing, so slow work never backs up the socket.
+- Candles for every timeframe are built from individual trades, so the forming bar is known on every trade.
+- Indicators update in O(1) per bar. Strategies set to "check on every trade" evaluate the forming bar on each trade (via `Peek`) and fire once per bar per side. "Check on candle close" fires the moment a bar closes (a 200 ms clock closes bars even without a new trade).
+- The header shows feed lag (exchange timestamp to processing) and signal calculation time.
+
+### Orders
+
+Entries are limit (default best bid/ask, optional offset, post-only, cancelled after N bars) or market. When an entry fills, the app places a reduce-only take-profit limit and a reduce-only stop for the filled quantity, resizes them on partial fills, and cancels the other one when either fills. Strategies only place orders when both the strategy's "Place orders automatically" box and the global Auto trading switch are on. The kill switch cancels everything, closes the position and switches auto trading off.
+
+### Adding an exchange
+
+Implement `IExchange` (`src/BitmexBot.Core/Exchange.cs`): stream trades, quotes, orders, executions, position and balance into the `IExchangeSink`, and map `OrderSpec` (Limit/Market/Stop, post-only, reduce-only) to the exchange's API. Register it in `src/BitmexBot.Web/Program.cs`. `PaperExchange` is a complete reference. Contracts are treated as inverse (1 contract = 1 USD, PnL in BTC).
+
+## Backtest from the command line (BitMEX history)
+
+This CLI downloads from BitMEX's API, which may no longer be available. In the app, backtests run on any CSV in the data folder.
 
 ```bash
 dotnet run --project src/BitmexBot.Backtest -- --from 2024-01-01 --to 2025-01-01 --tf 15m
@@ -40,6 +87,8 @@ Exits are TP/SL only, one position at a time.
 
 ## Layout
 
-- `src/BitmexBot.Core`: streaming indicators (SMA, EMA, RSI, MACD, with `Peek` for the forming bar), the EMA/SMA cross strategy, the backtester, and the BitMEX candle downloader.
-- `src/BitmexBot.Backtest`: command line runner.
-- `tests/BitmexBot.Core.Tests`: run with `dotnet test`.
+- `src/BitmexBot.Core`: indicators (SMA, EMA, RSI, MACD, Bollinger, with `Peek` for the forming bar), candle builder, rule engine (`RuleStrategy`), backtester, `IExchange` and the paper exchange.
+- `src/BitmexBot.Web`: ASP.NET Core server: trading engine, order manager, SignalR hub, REST API.
+- `web/`: React + TradingView Lightweight Charts UI.
+- `src/BitmexBot.Backtest`: command line backtester.
+- `tests/`: run everything with `dotnet test`.

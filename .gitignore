@@ -62,3 +62,7 @@ obj/
 
 # Downloaded candle data
 data/
+
+# Built UI (run `npm run build` in web/)
+src/BitmexBot.Web/wwwroot/
+node_modules/
