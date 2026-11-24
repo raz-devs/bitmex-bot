@@ -16,14 +16,7 @@ string tf = Get("tf", "15m");
 bool testnet = opt.ContainsKey("testnet");
 
 // BitMEX only serves 1m/5m/1h/1d; other timeframes are built from the nearest smaller one.
-(string bin, int factor) = tf switch
-{
-    "1m" or "5m" or "1h" or "1d" => (tf, 1),
-    "15m" => ("5m", 3),
-    "30m" => ("5m", 6),
-    "4h" => ("1h", 4),
-    _ => throw new ArgumentException($"Unsupported timeframe {tf}. Use 1m, 5m, 15m, 30m, 1h, 4h or 1d."),
-};
+(string bin, int factor) = Timeframes.Source(tf);
 
 string cache = Path.Combine(Get("data", "data"), $"XBTUSD-{bin}-{from:yyyyMMdd}-{to:yyyyMMdd}{(testnet ? "-testnet" : "")}.csv");
 List<Candle> raw;
