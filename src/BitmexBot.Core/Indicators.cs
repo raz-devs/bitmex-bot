@@ -92,6 +92,38 @@ public sealed class Macd(int fast = 12, int slow = 26, int signal = 9)
         double sig = double.IsNaN(line) ? double.NaN : _signal.Next(line);
         return (line, sig, line - sig);
     }
+
+    public (double Line, double Signal, double Histogram) Peek(double x)
+    {
+        double line = _fast.Peek(x) - _slow.Peek(x);
+        double sig = double.IsNaN(line) ? double.NaN : _signal.Peek(line);
+        return (line, sig, line - sig);
+    }
+}
+
+/// <summary>Bollinger Bands: SMA ± <c>mult</c> population standard deviations over <c>period</c> bars.</summary>
+public sealed class Bollinger(int period = 20, double mult = 2)
+{
+    readonly Queue<double> _window = new(period);
+
+    public (double Upper, double Middle, double Lower) Next(double x)
+    {
+        _window.Enqueue(x);
+        if (_window.Count > period) _window.Dequeue();
+        return Calc(_window);
+    }
+
+    public (double Upper, double Middle, double Lower) Peek(double x) =>
+        Calc(_window.Skip(_window.Count == period ? 1 : 0).Append(x).ToList());
+
+    // O(period) per call; fine for period ~20. shortcut: switch to running sums if long periods are needed.
+    (double, double, double) Calc(IReadOnlyCollection<double> w)
+    {
+        if (w.Count < period) return (double.NaN, double.NaN, double.NaN);
+        double mean = w.Average();
+        double sd = Math.Sqrt(w.Sum(v => (v - mean) * (v - mean)) / period);
+        return (mean + mult * sd, mean, mean - mult * sd);
+    }
 }
 
 public static class Cross

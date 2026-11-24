@@ -2,8 +2,10 @@
   <Folder Name="/src/">
     <Project Path="src/BitmexBot.Backtest/BitmexBot.Backtest.csproj" />
     <Project Path="src/BitmexBot.Core/BitmexBot.Core.csproj" />
+    <Project Path="src/BitmexBot.Web/BitmexBot.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/BitmexBot.Core.Tests/BitmexBot.Core.Tests.csproj" />
+    <Project Path="tests/BitmexBot.Web.Tests/BitmexBot.Web.Tests.csproj" />
   </Folder>
 </Solution>
