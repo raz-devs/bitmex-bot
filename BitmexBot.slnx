@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BitmexBot.Backtest/BitmexBot.Backtest.csproj" />
+    <Project Path="src/BitmexBot.Core/BitmexBot.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BitmexBot.Core.Tests/BitmexBot.Core.Tests.csproj" />
+  </Folder>
+</Solution>

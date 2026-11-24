@@ -53,3 +53,12 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# .NET
+bin/
+obj/
+*.user
+.vs/
+
+# Downloaded candle data
+data/
